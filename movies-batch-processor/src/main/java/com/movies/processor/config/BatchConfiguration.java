@@ -1,18 +1,21 @@
 package com.movies.processor.config;
 
+import javax.sql.DataSource;
+
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.data.RepositoryItemWriter;
-import org.springframework.batch.item.data.builder.RepositoryItemWriterBuilder;
+import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,7 +26,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import com.movies.processor.entity.Movie;
 import com.movies.processor.listener.JobCompletionNotificationListener;
-import com.movies.processor.repository.MovieRepository;
 import com.movies.processor.transformer.MovieItemProcessor;
 
 @Configuration
@@ -36,18 +38,13 @@ public class BatchConfiguration {
 	@Value("${chunk-size}")
 	private int chunkSize;
 	
-	@Value("${thread-count}")
-	private int threadCount;
+	// @Autowired
+	// private MovieRepository movieRepository;
 	
-	@Value("${maximum-pool-size}")
-	private int maximumPoolSize;
-	
-	@Autowired
-	private MovieRepository movieRepository;
-
 	// tag::readerwriterprocessor[]
 	// READER
 	@Bean
+	@StepScope
 	FlatFileItemReader<Movie> reader() {
 		return new FlatFileItemReaderBuilder<Movie>()
 			.name("movieItemReader")
@@ -60,33 +57,35 @@ public class BatchConfiguration {
 			.linesToSkip(1)
 			.build();
 	}
-
-	// PROCESSER/TRANSFORMER
+	
+	// PROCESSER
 	@Bean
 	MovieItemProcessor processor() {
 		return new MovieItemProcessor();
 	}
-
-	// use JdbcBatchWriter for Better Performance
-	/*** using DataSource and JdbcBatchWriter ***
+	
+	// JdbcBatchWriter gives Better Performance than RepositoryItemWriter
 	@Bean
+	@StepScope
 	JdbcBatchItemWriter<Movie> writer(DataSource dataSource) {
-		return new JdbcBatchItemWriterBuilder<MovieNew>()
+		return new JdbcBatchItemWriterBuilder<Movie>()
 			.itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-			.sql("INSERT INTO t_movies (name, year) VALUES (:name, :year)")
+			.sql("INSERT INTO t_movies (certificate, description, directors_id, directors_name, duration, genre, gross_income, name, rating, stars_id, stars_name, votes, year, id) VALUES (:certificate, :description, :directors_id, :directors_name, :duration, :genre, :gross_income, :name, :rating, :stars_id, :stars_name, :votes, :year, :id)")
 			.dataSource(dataSource)
 			.build();
 	}
-	*/
 	
-	// WRITER
+	// RepositoryItemWriter
+	/*
 	@Bean
+	@StepScope
 	RepositoryItemWriter<Movie> writer() {
 		return new RepositoryItemWriterBuilder<Movie>()
 			.repository(movieRepository)
 			.methodName("save")
 			.build();
 	}
+	*/
 	// end::readerwriterprocessor[]
 
 	// tag::jobstep[]
@@ -101,41 +100,24 @@ public class BatchConfiguration {
 			.end()
 			.build();
 	}
-
+	
 	// STEPS
 	@Bean
-	Step step1(JobRepository jobRepository, PlatformTransactionManager transactionManager, RepositoryItemWriter<Movie> writer, TaskExecutor taskExecutor) {
+	Step step1(JobRepository jobRepository, PlatformTransactionManager transactionManager, JdbcBatchItemWriter<Movie> writer) {
 		return new StepBuilder("step1", jobRepository)
 			.<Movie, Movie> chunk(chunkSize, transactionManager)
 			.reader(reader())
 			.processor(processor())
 			.writer(writer)
-			// TRANSACTION MANAGEMENT STEP LEVEL
-			.transactionManager(transactionManager)
-			// STEP LEVEL TASK EXECUTOR
-			.taskExecutor(taskExecutor)
+			.taskExecutor(taskExecutor())
 			.build();
 	}
 	// end::jobstep[]
 	
 	// TASK EXECUTOR
-	/*** using custom executor
 	@Bean
 	TaskExecutor taskExecutor() {
-		SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor();
-		taskExecutor.setConcurrencyLimit(maximumPoolSize);
-		//ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-		// Set the number of threads
-		//taskExecutor.setCorePoolSize(threadCount);
-		//taskExecutor.setMaxPoolSize(maximumPoolSize);
-		//taskExecutor.afterPropertiesSet();
-		return taskExecutor;
-	}
-	*/
-	
-	@Bean
-	SimpleAsyncTaskExecutor simpleAsyncTaskExecutor() {
 		return new SimpleAsyncTaskExecutor();
 	}
-
+	
 }

@@ -57,9 +57,4 @@ public class Movie {
 	@Column(length=501)
     private String description;
 	
-	public Movie(String name, String year) {
-		this.name = name;
-		this.year = year;
-	}
-	
 }

@@ -25,7 +25,7 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
 		if(jobExecution.getStatus() == BatchStatus.COMPLETED) {
 			//log.info("!!! JOB FINISHED! Time to verify the results");
 			
-			log.info("!!! JOB FINISHED!");
+			log.info("!!! JOB FINISHED !!!");
 			
 			/*
 			jdbcTemplate.query("SELECT name, year FROM t_movies", 
