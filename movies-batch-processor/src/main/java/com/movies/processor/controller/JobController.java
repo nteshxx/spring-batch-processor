@@ -25,8 +25,7 @@ public class JobController {
 	
 	@PostMapping("/import-movies")
 	public ResponseEntity<Object> importMoviesJob() {
-		JobParameters jobParams = new JobParametersBuilder()
-				.addLong("startAt", System.currentTimeMillis()).toJobParameters();
+		JobParameters jobParams = new JobParametersBuilder().addLong("startAt", System.currentTimeMillis()).toJobParameters();
 		
 		try {
 			jobLauncher.run(job, jobParams);

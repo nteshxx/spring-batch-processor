@@ -26,6 +26,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import com.movies.processor.entity.Movie;
 import com.movies.processor.listener.JobCompletionNotificationListener;
+import com.movies.processor.query.Queries;
 import com.movies.processor.transformer.MovieItemProcessor;
 
 @Configuration
@@ -70,7 +71,7 @@ public class BatchConfiguration {
 	JdbcBatchItemWriter<Movie> writer(DataSource dataSource) {
 		return new JdbcBatchItemWriterBuilder<Movie>()
 			.itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-			.sql("INSERT INTO t_movies (certificate, description, directors_id, directors_name, duration, genre, gross_income, name, rating, stars_id, stars_name, votes, year, id) VALUES (:certificate, :description, :directors_id, :directors_name, :duration, :genre, :gross_income, :name, :rating, :stars_id, :stars_name, :votes, :year, :id)")
+			.sql(Queries.INSERT_IN_T_MOVIES)
 			.dataSource(dataSource)
 			.build();
 	}
