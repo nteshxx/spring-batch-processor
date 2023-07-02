@@ -20,6 +20,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import com.movies.processor.entity.Movie;
@@ -36,9 +38,6 @@ public class BatchConfiguration {
 	
 	@Value("${chunk-size}")
 	private int chunkSize;
-	
-	// @Autowired
-	// private MovieRepository movieRepository;
 	
 	// READER
 	@Bean
@@ -62,7 +61,7 @@ public class BatchConfiguration {
 		return new MovieItemProcessor();
 	}
 	
-	// JdbcBatchWriter gives Better Performance than RepositoryItemWriter
+	// WRITER
 	@Bean
 	@StepScope
 	JdbcBatchItemWriter<Movie> writer(DataSource dataSource) {
@@ -72,18 +71,6 @@ public class BatchConfiguration {
 			.dataSource(dataSource)
 			.build();
 	}
-	
-	/*
-	// RepositoryItemWriter
-	@Bean
-	@StepScope
-	RepositoryItemWriter<Movie> writer() {
-		return new RepositoryItemWriterBuilder<Movie>()
-			.repository(movieRepository)
-			.methodName("save")
-			.build();
-	}
-	*/
 
 	// JOB
 	@Bean
@@ -103,9 +90,16 @@ public class BatchConfiguration {
 		return new StepBuilder("step1", jobRepository)
 			.<Movie, Movie> chunk(chunkSize, transactionManager)
 			.reader(reader())
-			.processor(processor())
+			//.processor(processor())
 			.writer(writer)
+			.taskExecutor(taskExecutor())
 			.build();
 	}
-
+	
+	// TASK EXECUTOR
+	@Bean
+	TaskExecutor taskExecutor() {
+		return new SimpleAsyncTaskExecutor();
+	}
+	
 }
